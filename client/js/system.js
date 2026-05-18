@@ -2034,16 +2034,12 @@ function snapChaserToNearestPassableSpawn(state, chaser) {
 function canChaserMoveInDirection(state, chaser, dir = chaser.dir) {
   if (!dir || (!dir.dc && !dir.dr)) return false;
 
-  const candidate = {
-    ...chaser,
-    x: chaser.x + dir.dc * chaser.speed,
-    y: chaser.y + dir.dr * chaser.speed
-  };
+  const newX = Math.max(0, Math.min(state.canvasWidth - chaser.w, chaser.x + dir.dc * chaser.speed));
+  const newY = Math.max(0, Math.min(state.canvasHeight - chaser.h, chaser.y + dir.dr * chaser.speed));
 
-  candidate.x = Math.max(0, Math.min(state.canvasWidth - chaser.w, candidate.x));
-  candidate.y = Math.max(0, Math.min(state.canvasHeight - chaser.h, candidate.y));
+  if (newX === chaser.x && newY === chaser.y) return false;
 
-  return !hitsWall(getChaserNavRect(candidate));
+  return !hitsWall(getChaserNavRect({ ...chaser, x: newX, y: newY }));
 }
 
 function moveChaserOneStep(state, chaser, dir = chaser.dir) {
@@ -2057,12 +2053,13 @@ function moveChaserOneStep(state, chaser, dir = chaser.dir) {
     chaser.x = cellCtr.x - chaser.w / 2;
   }
 
+  const origX = chaser.x;
+  const origY = chaser.y;
+
   const totalDistance = Math.max(1, chaser.speed);
   const steps = Math.ceil(totalDistance);
   const stepX = (dir.dc * totalDistance) / steps;
   const stepY = (dir.dr * totalDistance) / steps;
-
-  let movedAny = false;
 
   for (let i = 0; i < steps; i += 1) {
     const candidate = {
@@ -2075,16 +2072,16 @@ function moveChaserOneStep(state, chaser, dir = chaser.dir) {
     candidate.y = Math.max(0, Math.min(state.canvasHeight - chaser.h, candidate.y));
 
     if (hitsWall(getChaserNavRect(candidate))) {
-      return movedAny;
+      break;
     }
 
     chaser.x = candidate.x;
     chaser.y = candidate.y;
-    movedAny = true;
   }
 
-  chaser.lastMoveAxis = dir.dc ? "x" : "y";
-  return movedAny;
+  const moved = chaser.x !== origX || chaser.y !== origY;
+  if (moved) chaser.lastMoveAxis = dir.dc ? "x" : "y";
+  return moved;
 }
 
 export function moveChasers(state) {
